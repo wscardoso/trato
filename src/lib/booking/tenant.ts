@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import { DateTime } from "luxon";
 import { prisma } from "@/lib/prisma";
 import { formatAddress } from "@/lib/formatters/br";
@@ -46,23 +45,6 @@ export type PublicStaff = {
   color: string | null;
   serviceIds: string[];
 };
-
-const tenantPublicInclude = {
-  services: {
-    where: { isActive: true },
-    orderBy: { sortOrder: "asc" as const },
-    include: {
-      staff: { select: { staffId: true } },
-    },
-  },
-  staff: {
-    where: { status: "ACTIVE" as const },
-    orderBy: { sortOrder: "asc" as const },
-    include: {
-      services: { select: { serviceId: true } },
-    },
-  },
-} satisfies Prisma.TenantInclude;
 
 export async function getTenantBySlug(
   slug: string,
@@ -114,10 +96,36 @@ export async function getTenantBySlug(
 
   const tenant = await prisma.tenant.findFirst({
     where: { slug, isActive: true },
-    include: tenantPublicInclude,
+    include: {
+      services: {
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      },
+      staff: {
+        where: { status: "ACTIVE" },
+        orderBy: [{ sortOrder: "asc" }, { displayName: "asc" }],
+      },
+    },
   });
 
   if (!tenant) return null;
+
+  const links = await prisma.staffService.findMany({
+    where: { tenantId: tenant.id },
+    select: { staffId: true, serviceId: true },
+  });
+
+  const staffIdsByService = new Map<string, string[]>();
+  const serviceIdsByStaff = new Map<string, string[]>();
+  for (const link of links) {
+    const staffForService = staffIdsByService.get(link.serviceId) ?? [];
+    staffForService.push(link.staffId);
+    staffIdsByService.set(link.serviceId, staffForService);
+
+    const servicesForStaff = serviceIdsByStaff.get(link.staffId) ?? [];
+    servicesForStaff.push(link.serviceId);
+    serviceIdsByStaff.set(link.staffId, servicesForStaff);
+  }
 
   return {
     id: tenant.id,
@@ -146,7 +154,7 @@ export async function getTenantBySlug(
       priceCents: s.priceCents,
       currency: s.currency,
       category: s.category,
-      staffIds: s.staff.map((x) => x.staffId),
+      staffIds: staffIdsByService.get(s.id) ?? [],
     })),
     staff: tenant.staff.map((s) => ({
       id: s.id,
@@ -154,7 +162,7 @@ export async function getTenantBySlug(
       bio: s.bio,
       avatarUrl: s.avatarUrl,
       color: s.color,
-      serviceIds: s.services.map((x) => x.serviceId),
+      serviceIds: serviceIdsByStaff.get(s.id) ?? [],
     })),
   };
 }

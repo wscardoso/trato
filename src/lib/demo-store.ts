@@ -96,11 +96,7 @@ const WEEKDAY_RULES: Array<{
 ];
 
 export function isDemoMode(): boolean {
-  return (
-    process.env.DEMO_MODE === "1" ||
-    process.env.DEMO_MODE === "true" ||
-    !process.env.DATABASE_URL
-  );
+  return process.env.DEMO_MODE === "1" || process.env.DEMO_MODE === "true";
 }
 
 export function getDemoTenant(slug: string): PublicTenant | null {

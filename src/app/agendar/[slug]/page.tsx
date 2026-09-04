@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { getTenantBySlug } from "@/lib/booking/tenant";
 import { BookingWizard } from "@/components/booking/booking-wizard";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };

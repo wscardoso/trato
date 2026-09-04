@@ -10,9 +10,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Prisma generate needs a URL at build time; demo runtime never queries it.
+# Prisma generate needs a URL at build time; runtime uses Coolify DATABASE_URL.
 ENV DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/booking?schema=public"
-ENV DEMO_MODE="true"
+ENV DEMO_MODE="false"
 ENV NEXT_TELEMETRY_DISABLED="1"
 
 RUN npx prisma generate
