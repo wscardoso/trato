@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { DateTime } from "luxon";
 import { prisma } from "@/lib/prisma";
 import { formatAddress } from "@/lib/formatters/br";
+import { getDemoTenant, isDemoMode } from "@/lib/demo-store";
 
 export type PublicTenantPayload = {
   id: string;
@@ -66,6 +67,51 @@ const tenantPublicInclude = {
 export async function getTenantBySlug(
   slug: string,
 ): Promise<PublicTenantPayload | null> {
+  if (isDemoMode()) {
+    const demo = getDemoTenant(slug);
+    if (!demo) return null;
+    const staffIds = demo.staff.map((s) => s.id);
+    const serviceIds = demo.services.map((s) => s.id);
+    return {
+      id: demo.id,
+      slug: demo.slug,
+      name: demo.name,
+      timezone: demo.timezone,
+      locale: "pt-BR",
+      currency: "BRL",
+      brandPrimary: demo.brandPrimary,
+      logoUrl: demo.logoUrl,
+      phone: null,
+      address: formatAddress(demo),
+      addressLine1: demo.addressLine1,
+      addressLine2: null,
+      city: demo.city,
+      state: demo.state,
+      maxAdvanceDays: demo.maxAdvanceDays,
+      minLeadMin: 60,
+      depositRequired: false,
+      slotIntervalMin: demo.slotIntervalMin,
+      services: demo.services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        durationMin: s.durationMin,
+        priceCents: s.priceCents,
+        currency: "BRL",
+        category: s.category,
+        staffIds,
+      })),
+      staff: demo.staff.map((s) => ({
+        id: s.id,
+        displayName: s.displayName,
+        bio: s.bio,
+        avatarUrl: s.avatarUrl,
+        color: null,
+        serviceIds,
+      })),
+    };
+  }
+
   const tenant = await prisma.tenant.findFirst({
     where: { slug, isActive: true },
     include: tenantPublicInclude,
