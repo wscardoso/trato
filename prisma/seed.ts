@@ -1,4 +1,5 @@
 import { PrismaClient, DayOfWeek } from "@prisma/client";
+import { hashPassword } from "../src/lib/auth/password";
 
 const prisma = new PrismaClient();
 
@@ -282,7 +283,33 @@ async function main() {
     }
   }
 
+  const ownerPassword = process.env.OWNER_PASSWORD || "trato-demo";
+  const passwordHash = hashPassword(ownerPassword);
+  await prisma.user.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: tenant.id,
+        email: "dono@domcarlos.local",
+      },
+    },
+    update: {
+      name: "Dono Dom Carlos",
+      role: "OWNER",
+      isActive: true,
+      passwordHash,
+    },
+    create: {
+      tenantId: tenant.id,
+      email: "dono@domcarlos.local",
+      name: "Dono Dom Carlos",
+      role: "OWNER",
+      isActive: true,
+      passwordHash,
+    },
+  });
+
   console.log("Seed OK → /agendar/dom-carlos-barbearia");
+  console.log("Owner login → /app/login (dono@domcarlos.local)");
 }
 
 main()
