@@ -3,6 +3,7 @@ import { createBookingAtomic, getPublicTenant } from "@/lib/booking-service";
 import {
   createBookingSchema,
   sanitizePlainText,
+  slotsQuerySchema,
 } from "@/lib/validations";
 import {
   DEMO_SERVICE_ID,
@@ -76,6 +77,23 @@ describe("Validation & security penetration", () => {
       customer: { name: "Teste", phone: "33988776655" },
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("slots query accepts RFC UUIDs and rejects legacy non-version hex IDs", () => {
+    const ok = slotsQuerySchema.safeParse({
+      slug: DEMO_TENANT_SLUG,
+      serviceId: DEMO_SERVICE_ID,
+      date: "2026-09-10",
+    });
+    expect(ok.success).toBe(true);
+
+    // Postgres uuid accepted these; Zod does not — root cause of staging VALIDATION_ERROR.
+    const legacy = slotsQuerySchema.safeParse({
+      slug: DEMO_TENANT_SLUG,
+      serviceId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+      date: "2026-09-10",
+    });
+    expect(legacy.success).toBe(false);
   });
 
   it("enforces tenant isolation on public tenant lookup", async () => {
