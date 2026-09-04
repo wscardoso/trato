@@ -285,6 +285,8 @@ export async function createDemoBooking(
     const staffName =
       match.staffId === DEMO_STAFF_2 ? "André" : "Carlos";
     const phone = normalizePhoneE164(input.customer.phone);
+    const bookingId = crypto.randomUUID();
+    const tenant = getDemoTenant(input.tenantSlug) ?? getDemoTenant("dom-carlos-barbearia");
 
     console.info("[demo-booking]", {
       customer: input.customer.name,
@@ -293,10 +295,38 @@ export async function createDemoBooking(
       startsAt: startsAt.toISOString(),
     });
 
+    if (tenant) {
+      const { sendBookingCreatedMessage } = await import("@/lib/whatsapp");
+      void sendBookingCreatedMessage({
+        bookingId,
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        tenantSlug: tenant.slug,
+        address: [tenant.addressLine1, tenant.city, tenant.state]
+          .filter(Boolean)
+          .join(", "),
+        timezone: tenant.timezone,
+        waInstanceId: process.env.UAZAPI_TOKEN ?? null,
+        waProvider: "uazapi",
+        customerName: input.customer.name,
+        customerPhoneE164: phone.startsWith("+") ? phone : `+${phone}`,
+        serviceName: service.name,
+        staffName,
+        startsAt,
+        endsAt,
+        durationMin: service.durationMin,
+        priceCents: service.priceCents,
+        currency: "BRL",
+        status: "CONFIRMED",
+      }).catch((err) => {
+        console.error("[whatsapp] demo send failed", err);
+      });
+    }
+
     return {
       ok: true,
       booking: {
-        id: crypto.randomUUID(),
+        id: bookingId,
         status: "CONFIRMED",
         startsAt: startsAt.toISOString(),
         endsAt: endsAt.toISOString(),

@@ -144,6 +144,21 @@ export async function deliverWhatsAppForTest(
   return sendViaProvider(ctx, text);
 }
 
+/** Demo / no-DB path: send WhatsApp without NotificationLog persistence. */
+export async function sendBookingCreatedMessage(
+  ctx: BookingNotifyContext,
+): Promise<{ status: string; error?: string }> {
+  const text = buildCreatedMessage(ctx);
+  const result = await sendViaProvider(ctx, text);
+  console.info("[whatsapp:demo-send]", {
+    to: digitsOnly(ctx.customerPhoneE164),
+    status: result.status,
+    error: result.error ?? null,
+    providerMsgId: result.providerMsgId,
+  });
+  return { status: result.status, error: result.error };
+}
+
 export async function enqueueBookingCreated(
   ctx: BookingNotifyContext,
 ): Promise<void> {
