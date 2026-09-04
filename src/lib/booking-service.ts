@@ -422,7 +422,10 @@ export async function createBookingAtomic(
           customerId: customer.id,
           staffId: staff.id,
           serviceId: service.id,
-          status: tenant.depositRequired ? "PENDING_PAYMENT" : "CONFIRMED",
+          status:
+            tenant.depositRequired || service.requiresDeposit
+              ? "PENDING_PAYMENT"
+              : "CONFIRMED",
           startsAt,
           endsAt,
           blockStartsAt,
@@ -430,7 +433,10 @@ export async function createBookingAtomic(
           timezone: tenant.timezone,
           priceCents: service.priceCents,
           currency: service.currency,
-          paymentStatus: tenant.depositRequired ? "PENDING" : "NONE",
+          paymentStatus:
+            tenant.depositRequired || service.requiresDeposit
+              ? "PENDING"
+              : "NONE",
           notes: input.customer.notes || null,
           source: input.source ?? "public_web",
           idempotencyKey: idempotencyKey ?? undefined,
@@ -443,29 +449,65 @@ export async function createBookingAtomic(
       });
     });
 
-    // Async WhatsApp after successful commit
-    void enqueueBookingCreated({
-      bookingId: booking.id,
-      tenantId: tenant.id,
-      tenantName: tenant.name,
-      tenantSlug: tenant.slug,
-      address: formatAddress(tenant),
-      timezone: tenant.timezone,
-      waInstanceId: tenant.waInstanceId,
-      waProvider: tenant.waProvider ?? "uazapi",
-      customerName: booking.customer.name,
-      customerPhoneE164: `+${booking.customer.phoneE164.replace(/^\+/, "")}`,
-      serviceName: booking.service.name,
-      staffName: booking.staff.displayName,
-      startsAt: booking.startsAt,
-      endsAt: booking.endsAt,
-      durationMin: booking.service.durationMin,
-      priceCents: booking.priceCents,
-      currency: booking.currency,
-      status: booking.status,
-    }).catch((err) => {
-      console.error("[whatsapp] enqueue failed", err);
-    });
+    // Async WhatsApp after successful commit (skip receipt until PIX paid)
+    if (booking.status !== "PENDING_PAYMENT") {
+      void enqueueBookingCreated({
+        bookingId: booking.id,
+        tenantId: tenant.id,
+        tenantName: tenant.name,
+        tenantSlug: tenant.slug,
+        address: formatAddress(tenant),
+        timezone: tenant.timezone,
+        waInstanceId: tenant.waInstanceId,
+        waProvider: tenant.waProvider ?? "uazapi",
+        customerName: booking.customer.name,
+        customerPhoneE164: `+${booking.customer.phoneE164.replace(/^\+/, "")}`,
+        serviceName: booking.service.name,
+        staffName: booking.staff.displayName,
+        startsAt: booking.startsAt,
+        endsAt: booking.endsAt,
+        durationMin: booking.service.durationMin,
+        priceCents: booking.priceCents,
+        currency: booking.currency,
+        status: booking.status,
+      }).catch((err) => {
+        console.error("[whatsapp] enqueue failed", err);
+      });
+    }
+
+    let payment: {
+      paymentId: string;
+      amountCents: number;
+      pixQrCode: string | null;
+      checkoutUrl: string | null;
+      expiresAt: string;
+      dryRun: boolean;
+    } | null = null;
+
+    if (booking.status === "PENDING_PAYMENT") {
+      try {
+        const { createDepositForBooking } = await import("@/lib/payments/deposit");
+        payment = await createDepositForBooking(booking.id);
+        if (payment?.pixQrCode) {
+          const { sendWhatsAppText } = await import("@/lib/whatsapp");
+          const phone = booking.customer.phoneE164.replace(/\D/g, "");
+          void sendWhatsAppText(
+            phone,
+            [
+              `Quase lá, ${booking.customer.name}! Para garantir seu horário na *${tenant.name}*, pague o sinal PIX.`,
+              "",
+              `Valor: R$ ${(payment.amountCents / 100).toFixed(2).replace(".", ",")}`,
+              `Copia e cola:`,
+              payment.pixQrCode,
+              "",
+              `Pague em até ${process.env.DEPOSIT_TIMEOUT_MIN ?? "30"} min ou a vaga é liberada.`,
+            ].join("\n"),
+          ).catch((err) => console.error("[whatsapp] pix notify failed", err));
+        }
+      } catch (err) {
+        console.error("[payment] deposit create failed", err);
+      }
+    }
 
     return {
       ok: true,
@@ -477,6 +519,8 @@ export async function createBookingAtomic(
         staffName: booking.staff.displayName,
         serviceName: booking.service.name,
         priceCents: booking.priceCents,
+        paymentStatus: booking.paymentStatus,
+        payment,
       },
     };
   } catch (err) {

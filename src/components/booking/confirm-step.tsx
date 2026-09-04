@@ -80,7 +80,11 @@ export function ConfirmStep({ slug, timezone }: Props) {
 
       const data = (await res.json()) as {
         error?: string;
-        booking?: { id: string };
+        booking?: {
+          id: string;
+          status?: string;
+          payment?: unknown;
+        };
       };
 
       if (!res.ok) {
@@ -99,10 +103,19 @@ export function ConfirmStep({ slug, timezone }: Props) {
       }
 
       const bookingId = data.booking?.id ?? "";
+      const needsPix =
+        data.booking?.status === "PENDING_PAYMENT" ||
+        Boolean(data.booking?.payment);
       reset();
-      router.push(
-        `/agendar/${slug}/sucesso?bookingId=${encodeURIComponent(bookingId)}`,
-      );
+      if (needsPix && bookingId) {
+        router.push(
+          `/agendar/${slug}/pagamento/${encodeURIComponent(bookingId)}`,
+        );
+      } else {
+        router.push(
+          `/agendar/${slug}/sucesso?bookingId=${encodeURIComponent(bookingId)}`,
+        );
+      }
     } catch {
       setSubmitError("Falha de conexão. Verifique a internet e tente de novo.");
     } finally {

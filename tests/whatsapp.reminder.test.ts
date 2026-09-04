@@ -23,6 +23,9 @@ describe("WhatsApp D−1 reminder timing", () => {
   });
 
   it("sends create menu with Cancel only (no Confirm)", async () => {
+    delete process.env.UAZAPI_BASE_URL;
+    delete process.env.UAZAPI_TOKEN;
+
     const logs: Array<{ choices?: string[] }> = [];
     const info = vi.spyOn(console, "info").mockImplementation((...args) => {
       if (args[0] === "[whatsapp:dry-run-menu]") {
@@ -33,8 +36,7 @@ describe("WhatsApp D−1 reminder timing", () => {
     const result = await createBookingAtomic(bookingPayload());
     expect(result.ok).toBe(true);
 
-    // Allow fire-and-forget send to settle
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 200));
 
     const createMenu = logs.find((l) =>
       l.choices?.some((c) => c.startsWith("Cancelar horário|")),

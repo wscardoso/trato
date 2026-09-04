@@ -26,9 +26,11 @@ export async function POST(request: Request) {
     });
   }
 
+  const { expireStaleDeposits } = await import("@/lib/payments/deposit");
+  const expired = await expireStaleDeposits(50);
   const result = await processQueuedNotifications(20);
-  console.info("[cron:notifications]", result);
-  return NextResponse.json({ ok: true, ...result });
+  console.info("[cron:notifications]", { ...result, expired });
+  return NextResponse.json({ ok: true, expired, ...result });
 }
 
 export async function GET(request: Request) {

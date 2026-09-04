@@ -16,6 +16,15 @@ export type CreateBookingResult =
         staffName: string;
         serviceName: string;
         priceCents: number;
+        paymentStatus?: string;
+        payment?: {
+          paymentId: string;
+          amountCents: number;
+          pixQrCode: string | null;
+          checkoutUrl: string | null;
+          expiresAt: string;
+          dryRun: boolean;
+        } | null;
       };
     }
   | { ok: false; code: string; message: string; status: number };

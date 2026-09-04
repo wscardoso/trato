@@ -147,6 +147,10 @@ async function main() {
     update: {
       waProvider: "uazapi",
       waInstanceId: process.env.UAZAPI_TOKEN || undefined,
+      depositRequired: process.env.DEPOSIT_REQUIRED === "true",
+      depositPercent: Number(process.env.DEPOSIT_PERCENT ?? "30") || 30,
+      paymentProvider: process.env.ASAAS_API_KEY ? "ASAAS" : "PIX_MANUAL",
+      asaasApiKeyEnc: process.env.ASAAS_API_KEY || undefined,
     },
     create: {
       slug: "dom-carlos-barbearia",
@@ -166,6 +170,10 @@ async function main() {
       bufferAfterMin: 5,
       waProvider: "uazapi",
       waInstanceId: process.env.UAZAPI_TOKEN || null,
+      depositRequired: process.env.DEPOSIT_REQUIRED === "true",
+      depositPercent: Number(process.env.DEPOSIT_PERCENT ?? "30") || 30,
+      paymentProvider: process.env.ASAAS_API_KEY ? "ASAAS" : "PIX_MANUAL",
+      asaasApiKeyEnc: process.env.ASAAS_API_KEY || null,
     },
   });
 
