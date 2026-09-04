@@ -307,8 +307,10 @@ export async function createDemoBooking(
     });
 
     if (tenant) {
-      const { sendBookingCreatedMessage } = await import("@/lib/whatsapp");
-      void sendBookingCreatedMessage({
+      const { sendBookingCreatedMessage, scheduleDemoReminder24 } = await import(
+        "@/lib/whatsapp"
+      );
+      const notifyCtx = {
         bookingId,
         tenantId: tenant.id,
         tenantName: tenant.name,
@@ -329,9 +331,11 @@ export async function createDemoBooking(
         priceCents: service.priceCents,
         currency: "BRL",
         status: "CONFIRMED",
-      }).catch((err) => {
+      };
+      void sendBookingCreatedMessage(notifyCtx).catch((err) => {
         console.error("[whatsapp] demo send failed", err);
       });
+      scheduleDemoReminder24(notifyCtx);
     }
 
     return {

@@ -49,6 +49,21 @@ UAZAPI_BASE_URL=
 UAZAPI_TOKEN=
 ```
 
+Produção com Postgres (lembretes D−1 / 2h):
+
+```env
+CRON_SECRET=um-segredo-longo
+```
+
+Agende no Coolify (Scheduled Task / cron externo) a cada 1–5 minutos:
+
+```bash
+curl -X POST "https://tratobarber.digitallforcelabs.cloud/api/cron/notifications" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+Em `DEMO_MODE=true` o cron responde `skipped: demo_mode` — o lembrete D−1 usa `setTimeout` no processo (≈60s se o horário for dentro de 24h).
+
 **Não** commitar `.env.local`. Segredos só no Coolify.
 
 ## 4. Healthcheck (importante p/ 503)

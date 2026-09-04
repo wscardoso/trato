@@ -5,5 +5,8 @@
 export {
   enqueueBookingCreated,
   deliverWhatsAppForTest,
+  sendBookingCreatedMessage,
+  sendReminder24Message,
+  processQueuedNotifications,
   type BookingNotifyContext,
 } from "@/lib/whatsapp";
