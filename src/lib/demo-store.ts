@@ -64,10 +64,14 @@ const SERVICES = [
 ] as const;
 
 type DemoBooking = {
+  id: string;
   staffId: string;
   blockStartsAt: Date;
   blockEndsAt: Date;
-  status: string;
+  status: "CONFIRMED" | "CANCELLED";
+  phoneE164: string;
+  serviceName: string;
+  staffName: string;
 };
 
 const globalDemo = globalThis as unknown as {
@@ -166,7 +170,9 @@ export function getDemoSlots(params: {
       minLeadMin: 60,
       rules: WEEKDAY_RULES.map((r) => ({ ...r, isActive: true })),
       exceptions: [],
-      bookings: demoBookings.filter((b) => b.staffId === staffId),
+      bookings: demoBookings.filter(
+        (b) => b.staffId === staffId && b.status === "CONFIRMED",
+      ),
     });
     for (const slot of computed) {
       if (!slotMap.has(slot.startsAt)) {
@@ -275,18 +281,23 @@ export async function createDemoBooking(
       .plus({ minutes: service.durationMin })
       .toJSDate();
 
-    demoBookings.push({
-      staffId: match.staffId,
-      blockStartsAt: startsAt,
-      blockEndsAt: endsAt,
-      status: "CONFIRMED",
-    });
-
     const staffName =
       match.staffId === DEMO_STAFF_2 ? "André" : "Carlos";
     const phone = normalizePhoneE164(input.customer.phone);
     const bookingId = crypto.randomUUID();
-    const tenant = getDemoTenant(input.tenantSlug) ?? getDemoTenant("dom-carlos-barbearia");
+    const tenant =
+      getDemoTenant(input.tenantSlug) ?? getDemoTenant("dom-carlos-barbearia");
+
+    demoBookings.push({
+      id: bookingId,
+      staffId: match.staffId,
+      blockStartsAt: startsAt,
+      blockEndsAt: endsAt,
+      status: "CONFIRMED",
+      phoneE164: phone.replace(/\D/g, ""),
+      serviceName: service.name,
+      staffName,
+    });
 
     console.info("[demo-booking]", {
       customer: input.customer.name,
@@ -338,4 +349,62 @@ export async function createDemoBooking(
   } finally {
     await lock.release();
   }
+}
+
+export function getDemoBooking(bookingId: string): DemoBooking | null {
+  return demoBookings.find((b) => b.id === bookingId) ?? null;
+}
+
+export function findDemoBookingByPrefix(prefix: string): DemoBooking | null {
+  if (!prefix) return null;
+  const matches = demoBookings.filter((b) => b.id.startsWith(prefix));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+export function cancelDemoBooking(bookingIdOrPrefix: string): {
+  ok: boolean;
+  booking?: DemoBooking;
+  message: string;
+} {
+  const booking =
+    getDemoBooking(bookingIdOrPrefix) ??
+    findDemoBookingByPrefix(bookingIdOrPrefix);
+  if (!booking) {
+    return { ok: false, message: "Agendamento não encontrado." };
+  }
+  if (booking.status === "CANCELLED") {
+    return { ok: true, booking, message: "Este horário já estava cancelado." };
+  }
+  booking.status = "CANCELLED";
+  return {
+    ok: true,
+    booking,
+    message: "Horário cancelado. A vaga voltou para a agenda.",
+  };
+}
+
+export function confirmDemoBooking(bookingIdOrPrefix: string): {
+  ok: boolean;
+  booking?: DemoBooking;
+  message: string;
+} {
+  const booking =
+    getDemoBooking(bookingIdOrPrefix) ??
+    findDemoBookingByPrefix(bookingIdOrPrefix);
+  if (!booking) {
+    return { ok: false, message: "Agendamento não encontrado." };
+  }
+  if (booking.status === "CANCELLED") {
+    return {
+      ok: false,
+      booking,
+      message: "Este horário já foi cancelado e não pode ser confirmado.",
+    };
+  }
+  booking.status = "CONFIRMED";
+  return {
+    ok: true,
+    booking,
+    message: "Trato confirmado! Te esperamos no horário marcado.",
+  };
 }

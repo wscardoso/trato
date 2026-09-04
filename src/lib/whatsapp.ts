@@ -39,7 +39,7 @@ function buildCreatedMessage(ctx: BookingNotifyContext): string {
     `🗓️ Quando: ${localWhen(ctx.startsAt, ctx.timezone)}`,
     ctx.address ? `📍 ${ctx.address}` : null,
     "",
-    "Para cancelar ou remarcar, responda esta mensagem.",
+    "Use os botões abaixo para confirmar presença ou cancelar e liberar a vaga.",
   ]
     .filter((l): l is string => l !== null)
     .join("\n");
@@ -49,8 +49,12 @@ function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
-function resolveUazapiToken(ctx: BookingNotifyContext): string | null {
-  return ctx.waInstanceId || process.env.UAZAPI_TOKEN || null;
+function resolveUazapiToken(ctx?: Pick<BookingNotifyContext, "waInstanceId"> | null): string | null {
+  return ctx?.waInstanceId || process.env.UAZAPI_TOKEN || null;
+}
+
+function uazapiBaseUrl(): string {
+  return (process.env.UAZAPI_BASE_URL ?? "").replace(/\/$/, "");
 }
 
 function extractProviderMsgId(json: unknown): string | null {
@@ -76,6 +80,44 @@ function extractProviderMsgId(json: unknown): string | null {
   return null;
 }
 
+let webhookEnsurePromise: Promise<void> | null = null;
+
+/** Register inbound webhook once per process so button replies reach Trato. */
+export async function ensureUazapiWebhook(): Promise<void> {
+  if (webhookEnsurePromise) return webhookEnsurePromise;
+  webhookEnsurePromise = (async () => {
+    const baseUrl = uazapiBaseUrl();
+    const token = process.env.UAZAPI_TOKEN;
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+    if (!baseUrl || !token || !appUrl) return;
+
+    const webhookUrl = `${appUrl}/api/webhooks/uazapi`;
+    try {
+      const res = await fetch(`${baseUrl}/webhook`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token,
+        },
+        body: JSON.stringify({
+          enabled: true,
+          url: webhookUrl,
+          events: ["messages"],
+          excludeMessages: ["fromMeYes"],
+        }),
+      });
+      console.info("[whatsapp:webhook]", {
+        status: res.status,
+        url: webhookUrl,
+        ok: res.ok,
+      });
+    } catch (err) {
+      console.error("[whatsapp:webhook] failed", err);
+    }
+  })();
+  return webhookEnsurePromise;
+}
+
 /**
  * uazapiGO send path:
  * POST {UAZAPI_BASE_URL}/send/text
@@ -87,7 +129,7 @@ async function sendViaProvider(
   ctx: BookingNotifyContext,
   text: string,
 ): Promise<{ providerMsgId: string | null; status: string; error?: string }> {
-  const baseUrl = (process.env.UAZAPI_BASE_URL ?? "").replace(/\/$/, "");
+  const baseUrl = uazapiBaseUrl();
   const token = resolveUazapiToken(ctx);
 
   if (!baseUrl || !token) {
@@ -136,6 +178,103 @@ async function sendViaProvider(
   }
 }
 
+async function sendMenuViaProvider(
+  ctx: BookingNotifyContext,
+  text: string,
+): Promise<{ providerMsgId: string | null; status: string; error?: string }> {
+  const baseUrl = uazapiBaseUrl();
+  const token = resolveUazapiToken(ctx);
+
+  if (!baseUrl || !token) {
+    console.info("[whatsapp:dry-run-menu]", {
+      to: ctx.customerPhoneE164,
+      text: text.slice(0, 120),
+      choices: [`Confirmar presença|confirm:${ctx.bookingId}`, `Cancelar horário|cancel:${ctx.bookingId}`],
+    });
+    return { providerMsgId: null, status: "queued" };
+  }
+
+  try {
+    await ensureUazapiWebhook();
+    const res = await fetch(`${baseUrl}/send/menu`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        token,
+      },
+      body: JSON.stringify({
+        number: digitsOnly(ctx.customerPhoneE164),
+        type: "button",
+        text,
+        choices: [
+          `Confirmar presença|confirm:${ctx.bookingId}`,
+          `Cancelar horário|cancel:${ctx.bookingId}`,
+        ],
+        footerText: "Trato · agendamento com compromisso",
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      // Fallback to plain text if menu endpoint rejects
+      console.warn("[whatsapp:menu-fallback]", res.status, errText.slice(0, 200));
+      return sendViaProvider(
+        ctx,
+        `${text}\n\nResponda:\n✅ CONFIRMAR ${ctx.bookingId.slice(0, 8)}\n❌ CANCELAR ${ctx.bookingId.slice(0, 8)}`,
+      );
+    }
+
+    const json: unknown = await res.json();
+    return {
+      providerMsgId: extractProviderMsgId(json),
+      status: "sent",
+    };
+  } catch (err) {
+    return {
+      providerMsgId: null,
+      status: "retry",
+      error: err instanceof Error ? err.message : "unknown",
+    };
+  }
+}
+
+export async function sendWhatsAppText(
+  toPhone: string,
+  text: string,
+): Promise<{ status: string; error?: string }> {
+  const baseUrl = uazapiBaseUrl();
+  const token = process.env.UAZAPI_TOKEN;
+  if (!baseUrl || !token) {
+    console.info("[whatsapp:dry-run-reply]", { to: toPhone, text: text.slice(0, 120) });
+    return { status: "queued" };
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/send/text`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        token,
+      },
+      body: JSON.stringify({
+        number: digitsOnly(toPhone),
+        text,
+        linkPreview: false,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { status: "retry", error: `HTTP_${res.status}: ${errText}`.slice(0, 500) };
+    }
+    return { status: "sent" };
+  } catch (err) {
+    return {
+      status: "retry",
+      error: err instanceof Error ? err.message : "unknown",
+    };
+  }
+}
+
 /** Exported for unit tests — simulates provider delivery without DB. */
 export async function deliverWhatsAppForTest(
   ctx: BookingNotifyContext,
@@ -144,12 +283,12 @@ export async function deliverWhatsAppForTest(
   return sendViaProvider(ctx, text);
 }
 
-/** Demo / no-DB path: send WhatsApp without NotificationLog persistence. */
+/** Demo / no-DB path: send WhatsApp menu without NotificationLog persistence. */
 export async function sendBookingCreatedMessage(
   ctx: BookingNotifyContext,
 ): Promise<{ status: string; error?: string }> {
   const text = buildCreatedMessage(ctx);
-  const result = await sendViaProvider(ctx, text);
+  const result = await sendMenuViaProvider(ctx, text);
   console.info("[whatsapp:demo-send]", {
     to: digitsOnly(ctx.customerPhoneE164),
     status: result.status,
