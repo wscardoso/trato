@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trato — preview Urbano & Funcional</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --graphite: #121417;
+        --copper: #e06535;
+        --lead: #1e2228;
+        --offwhite: #f4f5f6;
+        --steel: #8c95a1;
+        --signal: #10b981;
+        --surface-2: #262b33;
+        --border: color-mix(in srgb, var(--steel) 35%, transparent);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "DM Sans", system-ui, sans-serif;
+        background: var(--graphite);
+        color: var(--offwhite);
+        line-height: 1.5;
+      }
+
+      .display {
+        font-family: "Bebas Neue", sans-serif;
+        letter-spacing: 0.12em;
+        font-weight: 400;
+      }
+
+      /* —— Hero —— */
+      .hero {
+        position: relative;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .hero-bg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .hero-veil {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(18, 20, 23, 0.55) 0%,
+          rgba(18, 20, 23, 0.78) 45%,
+          rgba(18, 20, 23, 0.96) 100%
+        );
+      }
+
+      .hero-top {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 2rem 1.5rem 0;
+      }
+
+      .mark {
+        width: 32px;
+        height: 32px;
+        color: var(--copper);
+      }
+
+      .hero-brand {
+        font-size: 1.25rem;
+        letter-spacing: 0.28em;
+      }
+
+      .hero-main {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 4rem 1.5rem 6rem;
+      }
+
+      .hero-title {
+        margin: 0;
+        font-size: clamp(4.5rem, 18vw, 9rem);
+        letter-spacing: 0.2em;
+        line-height: 1;
+        animation: rise 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      .hero-copy {
+        margin: 1.5rem 0 0;
+        max-width: 28rem;
+        font-size: 1.125rem;
+        color: var(--steel);
+        animation: rise 0.56s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 2rem;
+        border: none;
+        border-radius: 12px;
+        background: var(--copper);
+        color: var(--offwhite);
+        font: 600 0.875rem/1 "DM Sans", system-ui, sans-serif;
+        letter-spacing: 0.04em;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .btn:hover {
+        transform: scale(1.02);
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--offwhite);
+      }
+
+      .hero-cta {
+        margin-top: 2.5rem;
+        animation: rise 0.56s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both;
+      }
+
+      .hero-domain {
+        position: relative;
+        z-index: 1;
+        margin: 0;
+        padding: 0 1.5rem 1.5rem;
+        text-align: center;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--steel);
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* —— Section —— */
+      .section {
+        background: var(--lead);
+        border-top: 1px solid color-mix(in srgb, var(--steel) 28%, transparent);
+        padding: 5rem 1.5rem;
+        text-align: center;
+      }
+
+      .section h2 {
+        margin: 0;
+        font-size: clamp(2rem, 6vw, 3rem);
+        letter-spacing: 0.12em;
+        color: var(--copper);
+      }
+
+      .section p {
+        margin: 1.25rem auto 0;
+        max-width: 36rem;
+        color: var(--steel);
+      }
+
+      /* —— Palette —— */
+      .palette {
+        padding: 4rem 1.5rem 5rem;
+        max-width: 720px;
+        margin: 0 auto;
+      }
+
+      .palette h2 {
+        margin: 0 0 0.5rem;
+        font-size: 2rem;
+        letter-spacing: 0.14em;
+      }
+
+      .palette > p {
+        margin: 0 0 2rem;
+        color: var(--steel);
+        font-size: 0.95rem;
+      }
+
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .swatch {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--lead);
+      }
+
+      .swatch-chip {
+        height: 72px;
+      }
+
+      .swatch-meta {
+        padding: 0.75rem 0.85rem 1rem;
+      }
+
+      .swatch-meta strong {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .swatch-meta span {
+        font-size: 0.75rem;
+        color: var(--steel);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* —— Booking mock —— */
+      .mock-wrap {
+        padding: 0 1.5rem 5rem;
+        max-width: 420px;
+        margin: 0 auto;
+      }
+
+      .mock-wrap > h2 {
+        margin: 0 0 1rem;
+        font-size: 1.75rem;
+        letter-spacing: 0.14em;
+        text-align: center;
+      }
+
+      .phone {
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        background: var(--graphite);
+        overflow: hidden;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+      }
+
+      .phone-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background:
+          radial-gradient(
+            ellipse 80% 60% at 20% 0%,
+            color-mix(in srgb, var(--copper) 28%, transparent),
+            transparent 70%
+          ),
+          var(--graphite);
+      }
+
+      .avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--surface-2);
+        border: 2px solid color-mix(in srgb, var(--copper) 40%, transparent);
+        display: grid;
+        place-items: center;
+        color: var(--copper);
+        font-family: "Bebas Neue", sans-serif;
+        letter-spacing: 0.06em;
+        font-size: 1.1rem;
+      }
+
+      .phone-header h3 {
+        margin: 0;
+        font-family: "Bebas Neue", sans-serif;
+        letter-spacing: 0.06em;
+        font-size: 1.35rem;
+        font-weight: 400;
+      }
+
+      .phone-header p {
+        margin: 0.15rem 0 0;
+        font-size: 0.8rem;
+        color: var(--steel);
+      }
+
+      .steps {
+        display: flex;
+        gap: 0.35rem;
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .step {
+        flex: 1;
+        height: 3px;
+        border-radius: 99px;
+        background: var(--surface-2);
+      }
+
+      .step.on {
+        background: var(--copper);
+      }
+
+      .phone-body {
+        padding: 1rem;
+      }
+
+      .card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 0.65rem;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--lead);
+      }
+
+      .card.selected {
+        border-color: var(--copper);
+        background: color-mix(in srgb, var(--copper) 14%, var(--lead));
+        box-shadow: 0 0 0 1px var(--copper);
+      }
+
+      .card strong {
+        display: block;
+        font-size: 0.95rem;
+      }
+
+      .card span {
+        font-size: 0.8rem;
+        color: var(--steel);
+      }
+
+      .price {
+        color: var(--copper);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .slots {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        margin: 1rem 0 1.25rem;
+      }
+
+      .slot {
+        min-height: 40px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--lead);
+        color: var(--offwhite);
+        font: 500 0.85rem/1 "DM Sans", system-ui, sans-serif;
+        cursor: pointer;
+      }
+
+      .slot.active {
+        background: var(--copper);
+        border-color: var(--copper);
+        color: var(--offwhite);
+      }
+
+      .phone-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .phone-actions .btn {
+        flex: 2;
+        min-height: 44px;
+        width: 100%;
+      }
+
+      .phone-actions .btn-ghost {
+        flex: 1;
+      }
+
+      /* —— Success —— */
+      .success {
+        margin-top: 1rem;
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--lead);
+        text-align: center;
+      }
+
+      .success-badge {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 1rem;
+        border-radius: 50%;
+        background: var(--signal);
+        color: var(--graphite);
+        display: grid;
+        place-items: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+
+      .success h4 {
+        margin: 0;
+        font-family: "Bebas Neue", sans-serif;
+        letter-spacing: 0.1em;
+        font-size: 1.75rem;
+        font-weight: 400;
+      }
+
+      .success p {
+        margin: 0.5rem 0 0;
+        color: var(--steel);
+        font-size: 0.9rem;
+      }
+
+      footer {
+        border-top: 1px solid color-mix(in srgb, var(--steel) 22%, transparent);
+        padding: 2rem 1.5rem;
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--steel);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Landing hero -->
+    <section class="hero">
+      <img
+        class="hero-bg"
+        src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=2400&q=80"
+        alt=""
+      />
+      <div class="hero-veil" aria-hidden="true"></div>
+
+      <div class="hero-top">
+        <svg class="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <path d="M20 8v22" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+          <path d="M9 8h22" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" />
+          <path
+            d="M11 8v5M15.5 8v4M20 8v5.5M24.5 8v4M29 8v5"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+          <path d="M20 30l-3.2 4h6.4L20 30z" fill="currentColor" />
+        </svg>
+        <span class="display hero-brand">TRATO</span>
+      </div>
+
+      <div class="hero-main">
+        <h1 class="display hero-title">TRATO</h1>
+        <p class="hero-copy">Dar um trato no visual. Manter o horário.</p>
+        <a class="btn hero-cta" href="#mock">Agendar demo</a>
+      </div>
+
+      <p class="hero-domain">tratobarber.digitallforcelabs.cloud</p>
+    </section>
+
+    <section class="section">
+      <h2 class="display">O TRATO É SIMPLES</h2>
+      <p>
+        O cliente marca. A casa cumpre. Agendamento online com WhatsApp, horários
+        reais e zero confusão de agenda.
+      </p>
+    </section>
+
+    <!-- Palette -->
+    <section class="palette" id="palette">
+      <h2 class="display">URBANO &amp; FUNCIONAL</h2>
+      <p>Paleta oficial — dark mode nativo.</p>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-chip" style="background: #121417"></div>
+          <div class="swatch-meta">
+            <strong>Preto Grafite</strong>
+            <span>#121417 · Fundo</span>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background: #e06535"></div>
+          <div class="swatch-meta">
+            <strong>Cobre Âmbar</strong>
+            <span>#E06535 · CTA</span>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background: #1e2228"></div>
+          <div class="swatch-meta">
+            <strong>Cinza Chumbo</strong>
+            <span>#1E2228 · Cards</span>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background: #f4f5f6"></div>
+          <div class="swatch-meta">
+            <strong>Off-White</strong>
+            <span>#F4F5F6 · Texto</span>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background: #8c95a1"></div>
+          <div class="swatch-meta">
+            <strong>Cinza Aço</strong>
+            <span>#8C95A1 · Apoio</span>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background: #10b981"></div>
+          <div class="swatch-meta">
+            <strong>Verde Sinal</strong>
+            <span>#10B981 · Sucesso</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mobile booking mock -->
+    <section class="mock-wrap" id="mock">
+      <h2 class="display">FUNIL MOBILE</h2>
+      <div class="phone">
+        <div class="phone-header">
+          <div class="avatar">DC</div>
+          <div>
+            <h3>DOM CARLOS BARBEARIA</h3>
+            <p>Iapu, MG · AV BRASIL, 142</p>
+          </div>
+        </div>
+        <div class="steps" aria-hidden="true">
+          <div class="step on"></div>
+          <div class="step on"></div>
+          <div class="step on"></div>
+          <div class="step"></div>
+          <div class="step"></div>
+        </div>
+        <div class="phone-body">
+          <div class="card selected">
+            <div>
+              <strong>Corte Navalhado</strong>
+              <span>35 min</span>
+            </div>
+            <div class="price">R$ 35</div>
+          </div>
+          <div class="card">
+            <div>
+              <strong>Corte Social</strong>
+              <span>35 min</span>
+            </div>
+            <div class="price">R$ 30</div>
+          </div>
+
+          <div class="slots">
+            <button type="button" class="slot">14:00</button>
+            <button type="button" class="slot active">14:35</button>
+            <button type="button" class="slot">15:10</button>
+            <button type="button" class="slot">15:45</button>
+            <button type="button" class="slot">16:20</button>
+            <button type="button" class="slot">16:55</button>
+          </div>
+
+          <div class="phone-actions">
+            <button type="button" class="btn btn-ghost">Voltar</button>
+            <button type="button" class="btn">Confirmar Trato</button>
+          </div>
+
+          <div class="success">
+            <div class="success-badge">✓</div>
+            <h4>Trato Feito</h4>
+            <p>Horário confirmado. WhatsApp a caminho.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>Trato · Digitall Force Labs · preview estático</footer>
+
+    <script>
+      document.querySelectorAll(".slot").forEach((el) => {
+        el.addEventListener("click", () => {
+          document.querySelectorAll(".slot").forEach((s) => s.classList.remove("active"));
+          el.classList.add("active");
+        });
+      });
+    </script>
+  </body>
+</html>

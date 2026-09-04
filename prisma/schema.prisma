@@ -1,0 +1,377 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto, citext]
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  OWNER
+  MANAGER
+  STAFF
+  RECEPTION
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  EXPIRED
+}
+
+enum PaymentStatus {
+  NONE
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum PaymentProvider {
+  NONE
+  ASAAS
+  STRIPE
+  PIX_MANUAL
+}
+
+enum NotificationChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+  PUSH
+}
+
+enum NotificationEvent {
+  BOOKING_CREATED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULED
+  REMINDER_24H
+  REMINDER_2H
+  FEEDBACK_POST_SERVICE
+  PAYMENT_REQUIRED
+  PAYMENT_RECEIVED
+}
+
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+}
+
+model Tenant {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug              String          @unique @db.Citext
+  name              String
+  legalName         String?         @map("legal_name")
+  timezone          String          @default("America/Sao_Paulo")
+  locale            String          @default("pt-BR")
+  currency          String          @default("BRL") @db.Char(3)
+  phone             String?
+  whatsappE164      String?         @map("whatsapp_e164")
+  email             String?
+  addressLine1      String?         @map("address_line1")
+  addressLine2      String?         @map("address_line2")
+  city              String?
+  state             String?         @db.VarChar(2)
+  postalCode        String?         @map("postal_code")
+  country           String          @default("BR") @db.Char(2)
+  logoUrl           String?         @map("logo_url")
+  brandPrimary      String?         @map("brand_primary")
+  customDomain      String?         @unique @map("custom_domain")
+  slotIntervalMin   Int             @default(15) @map("slot_interval_min")
+  bufferBeforeMin   Int             @default(0) @map("buffer_before_min")
+  bufferAfterMin    Int             @default(0) @map("buffer_after_min")
+  minLeadMin        Int             @default(60) @map("min_lead_min")
+  maxAdvanceDays    Int             @default(60) @map("max_advance_days")
+  cancelPolicyMin   Int             @default(120) @map("cancel_policy_min")
+  depositRequired   Boolean         @default(false) @map("deposit_required")
+  depositPercent    Int?            @map("deposit_percent")
+  depositFixedCents Int?            @map("deposit_fixed_cents")
+  paymentProvider   PaymentProvider @default(NONE) @map("payment_provider")
+  asaasApiKeyEnc    String?         @map("asaas_api_key_enc")
+  stripeAcctId      String?         @map("stripe_acct_id")
+  waInstanceId      String?         @map("wa_instance_id") // uazapiGO instance token
+  waProvider        String?         @map("wa_provider") // uazapi
+  isActive          Boolean         @default(true) @map("is_active")
+  plan              String          @default("starter")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users            User[]
+  staff            Staff[]
+  services         Service[]
+  customers        Customer[]
+  bookings         Booking[]
+  notificationLogs NotificationLog[]
+  locations        Location[]
+  payments         Payment[]
+
+  @@map("tenants")
+}
+
+model Location {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  address   String?
+  isDefault Boolean  @default(false) @map("is_default")
+  timezone  String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staff  Staff[]
+
+  @@index([tenantId])
+  @@map("locations")
+}
+
+model User {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  authUserId  String?   @unique @map("auth_user_id")
+  email       String    @db.Citext
+  name        String
+  phone       String?
+  role        UserRole  @default(STAFF)
+  isActive    Boolean   @default(true) @map("is_active")
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staff  Staff?
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Staff {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String      @map("tenant_id") @db.Uuid
+  userId          String?     @unique @map("user_id") @db.Uuid
+  locationId      String?     @map("location_id") @db.Uuid
+  displayName     String      @map("display_name")
+  bio             String?
+  avatarUrl       String?     @map("avatar_url")
+  color           String?
+  status          StaffStatus @default(ACTIVE)
+  sortOrder       Int         @default(0) @map("sort_order")
+  slotIntervalMin Int?        @map("slot_interval_min")
+  bufferBeforeMin Int?        @map("buffer_before_min")
+  bufferAfterMin  Int?        @map("buffer_after_min")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant     Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  location   Location?               @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  services   StaffService[]
+  rules      AvailabilityRule[]
+  exceptions AvailabilityException[]
+  bookings   Booking[]
+
+  @@index([tenantId, status])
+  @@map("staff")
+}
+
+model Service {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  name            String
+  description     String?
+  durationMin     Int      @map("duration_min")
+  bufferAfterMin  Int      @default(0) @map("buffer_after_min")
+  priceCents      Int      @map("price_cents")
+  currency        String   @default("BRL") @db.Char(3)
+  category        String?
+  isActive        Boolean  @default(true) @map("is_active")
+  requiresDeposit Boolean  @default(false) @map("requires_deposit")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staff    StaffService[]
+  bookings Booking[]
+
+  @@index([tenantId, isActive])
+  @@map("services")
+}
+
+model StaffService {
+  staffId   String @map("staff_id") @db.Uuid
+  serviceId String @map("service_id") @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+
+  staff   Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, serviceId])
+  @@index([tenantId])
+  @@map("staff_services")
+}
+
+model AvailabilityRule {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  staffId       String    @map("staff_id") @db.Uuid
+  dayOfWeek     DayOfWeek @map("day_of_week")
+  startTime     String    @map("start_time")
+  endTime       String    @map("end_time")
+  breakStart    String?   @map("break_start")
+  breakEnd      String?   @map("break_end")
+  isActive      Boolean   @default(true) @map("is_active")
+  effectiveFrom DateTime? @map("effective_from") @db.Date
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, staffId, dayOfWeek])
+  @@map("availability_rules")
+}
+
+model AvailabilityException {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  staffId   String   @map("staff_id") @db.Uuid
+  date      DateTime @db.Date
+  isDayOff  Boolean  @default(false) @map("is_day_off")
+  startTime String?  @map("start_time")
+  endTime   String?  @map("end_time")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, date])
+  @@index([tenantId, staffId, date])
+  @@map("availability_exceptions")
+}
+
+model Customer {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  name           String
+  phoneE164      String   @map("phone_e164")
+  email          String?  @db.Citext
+  cpf            String?
+  notes          String?
+  marketingOptIn Boolean  @default(true) @map("marketing_opt_in")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@unique([tenantId, phoneE164])
+  @@index([tenantId, name])
+  @@map("customers")
+}
+
+model Booking {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String        @map("tenant_id") @db.Uuid
+  customerId         String        @map("customer_id") @db.Uuid
+  staffId            String        @map("staff_id") @db.Uuid
+  serviceId          String        @map("service_id") @db.Uuid
+  status             BookingStatus @default(CONFIRMED)
+  startsAt           DateTime      @map("starts_at") @db.Timestamptz(6)
+  endsAt             DateTime      @map("ends_at") @db.Timestamptz(6)
+  blockStartsAt      DateTime      @map("block_starts_at") @db.Timestamptz(6)
+  blockEndsAt        DateTime      @map("block_ends_at") @db.Timestamptz(6)
+  timezone           String
+  priceCents         Int           @map("price_cents")
+  currency           String        @default("BRL") @db.Char(3)
+  paymentStatus      PaymentStatus @default(NONE) @map("payment_status")
+  notes              String?
+  source             String        @default("public_web")
+  cancellationReason String?       @map("cancellation_reason")
+  cancelledAt        DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  completedAt        DateTime?     @map("completed_at") @db.Timestamptz(6)
+  idempotencyKey     String?       @unique @map("idempotency_key")
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer      Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  staff         Staff             @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  service       Service           @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  notifications NotificationLog[]
+  payments      Payment[]
+
+  @@index([tenantId, staffId, blockStartsAt, blockEndsAt])
+  @@index([tenantId, startsAt])
+  @@index([tenantId, customerId])
+  @@index([tenantId, status])
+  @@map("bookings")
+}
+
+model Payment {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String          @map("tenant_id") @db.Uuid
+  bookingId   String          @map("booking_id") @db.Uuid
+  provider    PaymentProvider
+  providerRef String?         @map("provider_ref")
+  amountCents Int             @map("amount_cents")
+  currency    String          @default("BRL") @db.Char(3)
+  status      PaymentStatus   @default(PENDING)
+  checkoutUrl String?         @map("checkout_url")
+  pixQrCode   String?         @map("pix_qr_code")
+  rawPayload  Json?           @map("raw_payload")
+  paidAt      DateTime?       @map("paid_at") @db.Timestamptz(6)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, bookingId])
+  @@index([providerRef])
+  @@map("payments")
+}
+
+model NotificationLog {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String              @map("tenant_id") @db.Uuid
+  bookingId     String?             @map("booking_id") @db.Uuid
+  customerId    String?             @map("customer_id") @db.Uuid
+  channel       NotificationChannel @default(WHATSAPP)
+  event         NotificationEvent
+  toE164        String              @map("to_e164")
+  templateKey   String              @map("template_key")
+  payload       Json
+  providerMsgId String?             @map("provider_msg_id")
+  status        String              @default("queued")
+  error         String?
+  scheduledFor  DateTime?           @map("scheduled_for") @db.Timestamptz(6)
+  sentAt        DateTime?           @map("sent_at") @db.Timestamptz(6)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, event, status])
+  @@index([scheduledFor, status])
+  @@index([bookingId, event])
+  @@map("notification_logs")
+}
