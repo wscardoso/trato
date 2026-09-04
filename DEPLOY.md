@@ -8,12 +8,14 @@ Base: [Coolify Docs](https://coolify.io/docs) · [Applications](https://coolify.
 GitHub (trato)  →  Coolify (Dockerfile build)  →  Traefik SSL
                          ↓
               tratobarber.digitallforcelabs.cloud
+                         ↓
+              Postgres (Supabase / externo)
 ```
 
 - **Build pack:** Dockerfile (não Nixpacks — temos `output: "standalone"`)
 - **Porta do container:** `3000`
 - **DNS:** CNAME `tratobarber` → `digitallforcelabs.cloud` (já ok se o Coolify escuta nesse host)
-- **MVP:** `DEMO_MODE=true` (sem Postgres ainda)
+- **DB:** Postgres externo (ex. Supabase). `DEMO_MODE=false` em produção.
 
 ## 1. Repositório GitHub
 
@@ -35,25 +37,34 @@ Já criado / a criar: push deste projeto para GitHub (privado recomendado).
 Runtime (+ Build se o Coolify exigir no build):
 
 ```env
-DEMO_MODE=true
+DEMO_MODE=false
 NODE_ENV=production
 HOSTNAME=0.0.0.0
 PORT=3000
 NEXT_PUBLIC_APP_URL=https://tratobarber.digitallforcelabs.cloud
+DATABASE_URL=postgresql://postgres:SENHA@db.SEU_REF.supabase.co:5432/postgres?sslmode=require
+CRON_SECRET=um-segredo-longo
 ```
 
-Opcionais (WhatsApp):
+WhatsApp:
 
 ```env
 UAZAPI_BASE_URL=
 UAZAPI_TOKEN=
 ```
 
-Produção com Postgres (lembretes D−1 / 2h):
+### Schema + seed (uma vez)
 
-```env
-CRON_SECRET=um-segredo-longo
+Com o mesmo `DATABASE_URL` na máquina local:
+
+```bash
+npx prisma migrate deploy
+npx prisma db seed
 ```
+
+O seed cria o tenant `dom-carlos-barbearia` (Carlos, Diego, serviços e agenda).
+
+### Lembretes D−1 / 2h
 
 Agende no Coolify (Scheduled Task / cron externo) a cada 1–5 minutos:
 
@@ -62,9 +73,9 @@ curl -X POST "https://tratobarber.digitallforcelabs.cloud/api/cron/notifications
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-Em `DEMO_MODE=true` o cron responde `skipped: demo_mode` — o lembrete D−1 usa `setTimeout` no processo (≈60s se o horário for dentro de 24h).
+Em `DEMO_MODE=true` o cron responde `skipped: demo_mode` — o lembrete D−1 usa `setTimeout` no processo.
 
-**Não** commitar `.env.local`. Segredos só no Coolify.
+**Não** commitar `.env.local`. Segredos só no Coolify / Supabase.
 
 ## 4. Healthcheck (importante p/ 503)
 
@@ -105,6 +116,8 @@ Auto-deploy: ative webhook/GitHub App para redeploy a cada push em `main` ([GitH
 - [ ] Repo no GitHub com `Dockerfile` na raiz
 - [ ] Coolify App = Dockerfile, porta 3000
 - [ ] Domain `https://tratobarber.digitallforcelabs.cloud`
-- [ ] `DEMO_MODE=true`
+- [ ] `DATABASE_URL` (Supabase) + `DEMO_MODE=false`
+- [ ] `prisma migrate deploy` + `db seed`
+- [ ] `CRON_SECRET` + scheduled task de notificações
 - [ ] Healthcheck OK (some o 503)
 - [ ] Auto-deploy ligado

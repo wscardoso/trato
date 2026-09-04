@@ -7,7 +7,10 @@ const WEEKDAYS: DayOfWeek[] = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
 async function main() {
   const tenant = await prisma.tenant.upsert({
     where: { slug: "dom-carlos-barbearia" },
-    update: {},
+    update: {
+      waProvider: "uazapi",
+      waInstanceId: process.env.UAZAPI_TOKEN || undefined,
+    },
     create: {
       slug: "dom-carlos-barbearia",
       name: "DOM CARLOS BARBEARIA",
@@ -25,6 +28,7 @@ async function main() {
       bufferBeforeMin: 0,
       bufferAfterMin: 5,
       waProvider: "uazapi",
+      waInstanceId: process.env.UAZAPI_TOKEN || null,
     },
   });
 

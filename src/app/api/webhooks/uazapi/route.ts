@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cancelDbBooking, confirmDbBooking } from "@/lib/booking/actions";
 import {
   cancelDemoBooking,
   confirmDemoBooking,
@@ -103,21 +104,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ignored: "no_action" });
   }
 
-  if (!isDemoMode()) {
-    return NextResponse.json({
-      ok: true,
-      ignored: "demo_only_actions",
-      action,
-      bookingId,
-    });
-  }
-
-  const result =
-    action === "cancel"
+  const result = isDemoMode()
+    ? action === "cancel"
       ? cancelDemoBooking(bookingId)
-      : confirmDemoBooking(bookingId);
+      : confirmDemoBooking(bookingId)
+    : action === "cancel"
+      ? await cancelDbBooking(bookingId)
+      : await confirmDbBooking(bookingId);
 
-  const replyTo = phone || result.booking?.phoneE164 || null;
+  const replyTo =
+    phone ||
+    ("phoneE164" in result ? result.phoneE164 : undefined) ||
+    ("booking" in result ? result.booking?.phoneE164 : undefined) ||
+    null;
+
   if (replyTo) {
     await sendWhatsAppText(replyTo, result.message);
   }
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     action,
     bookingId,
     ok: result.ok,
-    status: result.booking?.status ?? null,
+    demo: isDemoMode(),
   });
 
   return NextResponse.json({
