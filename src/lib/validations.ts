@@ -20,10 +20,27 @@ export function isValidCpf(raw: string): boolean {
 }
 
 export function normalizePhoneE164(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("55") && digits.length >= 12) return `+${digits}`;
-  if (digits.length === 10 || digits.length === 11) return `+55${digits}`;
-  if (phone.startsWith("+") && digits.length >= 10) return `+${digits}`;
+  let digits = phone.replace(/\D/g, "");
+
+  // Collapse duplicated Brazil country code (e.g. 5555319… → 55319…)
+  while (digits.startsWith("55") && digits.slice(2).startsWith("55")) {
+    digits = digits.slice(2);
+  }
+
+  // Already has country code — never prefix 55 again (avoids 55+5531… → 555531…)
+  if (digits.startsWith("55")) {
+    return `+${digits}`;
+  }
+
+  // National number: DDD (2) + local (8–9)
+  if (digits.length === 10 || digits.length === 11) {
+    return `+55${digits}`;
+  }
+
+  if (phone.trim().startsWith("+") && digits.length >= 10) {
+    return `+${digits}`;
+  }
+
   return `+${digits}`;
 }
 
